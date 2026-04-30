@@ -1,0 +1,15 @@
+[Unit]
+Description=My Web App Service
+Requires=mywebapp.socket
+After=network.target postgresql.service
+
+[Service]
+User=app
+WorkingDirectory=/home/aming/mywebapp/src
+# Виконуємо міграцію перед стартом застосунку[cite: 2, 5]
+ExecStartPre=/usr/bin/node /home/aming/mywebapp/src/migrate.js
+ExecStart=/usr/bin/node /home/aming/mywebapp/src/server.js
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
