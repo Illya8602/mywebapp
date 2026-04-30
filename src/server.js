@@ -7,7 +7,7 @@ app.use(express.json());
 
 let config = {
   port: 8000,
-  db: { host: "127.0.0.1", user: "app", database: "mywebapp" },
+  db: { host: "127.0.0.1", user: "app", password: "12345678", database: "mywebapp" },
 };
 try {
   const rawConfig = fs.readFileSync("/etc/mywebapp/config.json");
