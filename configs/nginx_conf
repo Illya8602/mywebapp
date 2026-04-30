@@ -2,12 +2,12 @@ server {
     listen 80;
     server_name _;
 
-    # Логування згідно з вимогами[cite: 2]
+    # Логування згідно з вимогами
     access_log /var/log/nginx/mywebapp.access.log;
     error_log /var/log/nginx/mywebapp.error.log;
 
     location / {
-        # Пересилка запитів на порт застосунку[cite: 2]
+        # Пересилка запитів на порт застосунку
         proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
