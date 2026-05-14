@@ -5,19 +5,31 @@ const fs = require("fs");
 const app = express();
 app.use(express.json());
 
-let config = {
-  port: 8000,
-  db: { host: "127.0.0.1", user: "app", password: "12345678", database: "mywebapp" },
+// 1. Налаштування: пріоритет змінним оточення (Docker), потім файлу, потім дефолту
+let dbConfig = {
+  host: process.env.DB_HOST || "127.0.0.1",
+  user: process.env.DB_USER || "app",
+  password: process.env.DB_PASSWORD || "12345678",
+  database: process.env.DB_NAME || "mywebapp",
+  port: parseInt(process.env.DB_PORT) || 5432,
 };
+
+const port = process.env.PORT || 8000;
+
+// Спроба зчитати файл конфігу, якщо він існує (для зворотної сумісності з Лабою 1)
 try {
-  const rawConfig = fs.readFileSync("/etc/mywebapp/config.json");
-  config = JSON.parse(rawConfig);
+  if (fs.existsSync("/etc/mywebapp/config.json")) {
+    const rawConfig = fs.readFileSync("/etc/mywebapp/config.json");
+    const fileConfig = JSON.parse(rawConfig);
+    dbConfig = { ...dbConfig, ...fileConfig.db };
+  }
 } catch (e) {
-  console.log("Конфіг не знайдено, використовуємо дефолтні значення");
+  console.log("Файл конфігу не зчитано, використовуємо змінні оточення");
 }
 
-const pool = new Pool(config.db);
+const pool = new Pool(dbConfig);
 
+// Допоміжна функція для форматування таблиці (залишаємо без змін)
 const formatHtmlTable = (data) => {
   if (data.length === 0) return "<p>No data</p>";
   let html =
@@ -37,36 +49,50 @@ const formatHtmlTable = (data) => {
   return html + "</table>";
 };
 
+// Ендпоінти
 app.get("/items", async (req, res) => {
-  const result = await pool.query("SELECT id, name FROM inventory");
-  if (req.headers.accept?.includes("text/html")) {
-    res.send(formatHtmlTable(result.rows));
-  } else {
-    res.json(result.rows);
+  try {
+    const result = await pool.query("SELECT id, name, quantity FROM inventory");
+    if (req.headers.accept?.includes("text/html")) {
+      res.send(formatHtmlTable(result.rows));
+    } else {
+      res.json(result.rows);
+    }
+  } catch (err) {
+    res.status(500).send(err.message);
   }
 });
 
 app.post("/items", async (req, res) => {
-  const { name, quantity } = req.body;
-  await pool.query("INSERT INTO inventory (name, quantity) VALUES ($1, $2)", [
-    name,
-    quantity,
-  ]);
-  res.status(201).send("Created");
-});
-
-app.get("/items/:id", async (req, res) => {
-  const result = await pool.query("SELECT * FROM inventory WHERE id = $1", [
-    req.params.id,
-  ]);
-  const item = result.rows[0];
-  if (req.headers.accept?.includes("text/html")) {
-    res.send(item ? formatHtmlTable([item]) : "Not Found");
-  } else {
-    res.json(item || { error: "Not Found" });
+  try {
+    const { name, quantity } = req.body;
+    await pool.query("INSERT INTO inventory (name, quantity) VALUES ($1, $2)", [
+      name,
+      quantity,
+    ]);
+    res.status(201).send("Created");
+  } catch (err) {
+    res.status(500).send(err.message);
   }
 });
 
+app.get("/items/:id", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM inventory WHERE id = $1", [
+      req.params.id,
+    ]);
+    const item = result.rows[0];
+    if (req.headers.accept?.includes("text/html")) {
+      res.send(item ? formatHtmlTable([item]) : "Not Found");
+    } else {
+      res.json(item || { error: "Not Found" });
+    }
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+// Healthchecks (дуже важливо для Docker)
 app.get("/health/alive", (req, res) => res.status(200).send("OK"));
 
 app.get("/health/ready", async (req, res) => {
@@ -80,18 +106,15 @@ app.get("/health/ready", async (req, res) => {
 
 app.get("/", (req, res) => {
   res.send(`
-        <h1>Endpoints</h1>
+        <h1>My Web App (Lab 2)</h1>
         <ul>
-            <li><a href="/items">GET /items</a></li>
-            <li>POST /items</li>
-            <li>GET /items/:id</li>
+            <li><a href="/items">Подивитись інвентар (GET /items)</a></li>
         </ul>
     `);
 });
 
-const server = app.listen(
-  process.env.LISTEN_FDS > 0 ? { fd: 3 } : config.port,
-  () => {
-    console.log(`Server running on port ${config.port}`);
-  },
-);
+// Запуск сервера на порту 8000
+app.listen(port, () => {
+  console.log(`Застосунок підключено до БД: ${dbConfig.host}`);
+  console.log(`Сервер запущено на порту ${port}`);
+});

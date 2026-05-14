@@ -1,10 +1,11 @@
 const { Pool } = require("pg");
 
 const pool = new Pool({
-  host: "127.0.0.1",
-  user: "app",
-  password: "12345678",
-  database: "mywebapp",
+  host: process.env.DB_HOST || "127.0.0.1",
+  user: process.env.DB_USER || "app",
+  password: process.env.DB_PASSWORD || "12345678",
+  database: process.env.DB_NAME || "mywebapp",
+  port: 5432,
 });
 
 const createTableQuery = `
