@@ -5,7 +5,6 @@ const fs = require("fs");
 const app = express();
 app.use(express.json());
 
-// 1. Налаштування: пріоритет змінним оточення (Docker), потім файлу, потім дефолту
 let dbConfig = {
   host: process.env.DB_HOST || "127.0.0.1",
   user: process.env.DB_USER || "app",
@@ -16,20 +15,18 @@ let dbConfig = {
 
 const port = process.env.PORT || 8000;
 
-// Спроба зчитати файл конфігу, якщо він існує (для зворотної сумісності з Лабою 1)
 try {
   if (fs.existsSync("/etc/mywebapp/config.json")) {
     const rawConfig = fs.readFileSync("/etc/mywebapp/config.json");
     const fileConfig = JSON.parse(rawConfig);
     dbConfig = { ...dbConfig, ...fileConfig.db };
   }
-} catch (e) {
+} catch {
   console.log("Файл конфігу не зчитано, використовуємо змінні оточення");
 }
 
 const pool = new Pool(dbConfig);
 
-// Допоміжна функція для форматування таблиці (залишаємо без змін)
 const formatHtmlTable = (data) => {
   if (data.length === 0) return "<p>No data</p>";
   let html =
@@ -49,7 +46,6 @@ const formatHtmlTable = (data) => {
   return html + "</table>";
 };
 
-// Ендпоінти
 app.get("/items", async (req, res) => {
   try {
     const result = await pool.query("SELECT id, name, quantity FROM inventory");
@@ -92,29 +88,28 @@ app.get("/items/:id", async (req, res) => {
   }
 });
 
-// Healthchecks (дуже важливо для Docker)
 app.get("/health/alive", (req, res) => res.status(200).send("OK"));
 
 app.get("/health/ready", async (req, res) => {
   try {
     await pool.query("SELECT 1");
     res.status(200).send("OK");
-  } catch (e) {
+  } catch {
     res.status(500).send("DB not ready");
   }
 });
 
 app.get("/", (req, res) => {
   res.send(`
-        <h1>My Web App (Lab 2)</h1>
+        <h1>My Web App (Lab 3)</h1>
         <ul>
             <li><a href="/items">Подивитись інвентар (GET /items)</a></li>
         </ul>
     `);
 });
 
-// Запуск сервера на порту 8000
-app.listen(port, () => {
-  console.log(`Застосунок підключено до БД: ${dbConfig.host}`);
-  console.log(`Сервер запущено на порту ${port}`);
+const server = app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
 });
+
+module.exports = { app, server };

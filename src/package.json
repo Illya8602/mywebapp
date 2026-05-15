@@ -4,7 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js",
+    "lint": "eslint .",
+    "test": "c8 jest --detectOpenHandles --forceExit",
+    "test:coverage": "c8 --check-coverage --lines 40 jest --detectOpenHandles --forceExit"
   },
   "keywords": [],
   "author": "",
@@ -13,5 +16,13 @@
   "dependencies": {
     "express": "^5.2.1",
     "pg": "^8.20.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "c8": "^11.0.0",
+    "eslint": "^10.4.0",
+    "globals": "^17.6.0",
+    "jest": "^30.4.2",
+    "supertest": "^7.2.2"
   }
 }
